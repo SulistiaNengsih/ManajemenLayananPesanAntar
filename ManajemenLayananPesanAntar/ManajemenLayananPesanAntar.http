@@ -1,0 +1,6 @@
+@ManajemenLayananPesanAntar_HostAddress = http://localhost:5231
+
+GET {{ManajemenLayananPesanAntar_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
