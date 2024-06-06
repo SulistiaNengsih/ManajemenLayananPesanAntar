@@ -10,7 +10,9 @@ namespace API_Manajemen_Layanan_Pesan_Antar.DTOs
         public string? cust_phone_number { get; set; }
         public string order_status { get; set; }
         public int? total_payment { get; set; }
+        public string? formatted_total_payment { get; set; }
         public int? cash_amount { get; set; }
+        public string? formatted_cash_amount { get; set; }
         public string? delivered_by { get; set; }
         public string? suspend_remark { get; set; }
         public string? cancel_remark { get; set; }
@@ -21,7 +23,7 @@ namespace API_Manajemen_Layanan_Pesan_Antar.DTOs
         public DateTime? received_at { get; set; }
         public DateTime? suspended_at { get; set; }
         public DateTime? canceled_at { get; set; }
-        public List<OrderItem> order_items { get; set; }
-        public OrderDelivery order_delivery { get; set; }
+        public List<OrderItemDto> order_items { get; set; }
+        public OrderDeliveryDto order_delivery { get; set; }
     }
 }       

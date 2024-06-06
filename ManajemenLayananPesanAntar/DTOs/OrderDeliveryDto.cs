@@ -12,5 +12,6 @@ namespace API_Manajemen_Layanan_Pesan_Antar.DTOs
         public double? delivery_longitude { get; set; }
         public double? courier_latitude { get; set; }
         public double? courier_longitude { get; set; }
+        public string? deliverylatlng { get; set; }
     }
 }
