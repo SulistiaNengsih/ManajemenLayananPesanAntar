@@ -104,6 +104,18 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Controllers
             return Ok(response);
         }
 
+        [HttpPost("update_courrier_location/{order_delivery_id}")]
+        public ActionResult<ResponseDataInfo<OrderDto>> UpdateCourierLocation(long order_delivery_id, [FromBody] UpdateCourierLocationRequest req)
+        {
+            var response = _svc.UpdateCourierLocation(order_delivery_id, req.latitude, req.longitude);
+            return Ok();
+        }
+
+        public class UpdateCourierLocationRequest
+        {
+            public double? latitude { get; set; }
+            public double? longitude { get; set; }
+        }
         public class AddOrderItemsRequest
         {
             public long product_id { get; set; }

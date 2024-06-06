@@ -18,5 +18,6 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Services
         public ResponseDataInfo<List<OrderDto>> GetOrder();
         public ResponseDataInfo<OrderDto> GetOrderById(long id);
         public ResponseDataInfo<OrderDto> GetOrderByOrderNumber(string order_number);
+        public ResponseDataInfo<OrderDeliveryDto> UpdateCourierLocation(long orderDeliveryId, double? latitude, double? longitude);
     }
 }

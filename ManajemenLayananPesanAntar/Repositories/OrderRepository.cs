@@ -381,7 +381,33 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
                 info = "Ok"
             };
         }
-        
+
+        public ResponseDataInfo<OrderDeliveryDto> UpdateCourierLocation(long orderDeliveryId, double? latitude, double? longitude)
+        {
+            var orderDelivery = _dbContext.Order_Deliveries.Where(x => x.id == orderDeliveryId).FirstOrDefault();
+
+            if (orderDelivery == null)
+            {
+                return new ResponseDataInfo<OrderDeliveryDto>()
+                {
+                    data = null,
+                    info = "order delivery tidak ditemukan."
+                };
+            }
+
+            orderDelivery.courier_latitude = latitude;
+            orderDelivery.courier_longitude = longitude;
+            orderDelivery.SetUpdated();
+            _dbContext.Update(orderDelivery);
+            _dbContext.SaveChanges();
+
+            return new ResponseDataInfo<OrderDeliveryDto>()
+            {
+                data = _mapper.Map<OrderDeliveryDto>(orderDelivery),
+                info = "ok"
+            };
+        }
+
         private Order GetOrderDetail(long id)
         {
             var order = _dbContext.Set<Order>().Where(x => x.id == id)
@@ -435,7 +461,7 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             }
             return trackingUrl;
         }
-        
+
         private string GenerateOrderNumber()
         {
             string currentDate = DateTime.Now.AddHours(7).ToString("yyMMdd");
@@ -452,13 +478,13 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             }
             return new string(orderNumber);
         }
-        
+
         public static string ConvertToRupiah(int? amount)
         {
             var cultureInfo = new CultureInfo("id-ID");
             return string.Format(cultureInfo, "{0:C}", amount);
         }
-        
+
         private string FormatPhoneNumber(string phone_number)
         {
             string cleanedNumber = Regex.Replace(phone_number, @"\D", "");
