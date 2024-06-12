@@ -23,6 +23,14 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Controllers
         }
 
         [AllowAnonymous]
+        [HttpPost("create_order_with_details")]
+        public ActionResult<ResponseDataInfo<OrderDto>> CreateOrderWithDetails([FromBody] CreateOrderRequest req)
+        {
+            var response = _svc.CreateOrderWithDetails(req.aoiReq, req.aodReq);
+            return Ok(response);
+        }
+
+        [AllowAnonymous]
         [HttpPost("create_order")]
         public ActionResult<ResponseDataInfo<OrderDto>> CreateOrder()
         {
@@ -108,18 +116,31 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Controllers
         public ActionResult<ResponseDataInfo<OrderDto>> UpdateCourierLocation(long order_delivery_id, [FromBody] UpdateCourierLocationRequest req)
         {
             var response = _svc.UpdateCourierLocation(order_delivery_id, req.latitude, req.longitude);
-            return Ok();
+            return Ok(response);
+        }
+
+        [HttpPost("add_fcm_token")]
+        public ActionResult<ResponseDataInfo<String>> AddFcmToken([FromBody] string token)
+        {
+            var response = _svc.AddFcmToken(token);
+            return Ok(response);
         }
 
         public class UpdateCourierLocationRequest
         {
-            public double? latitude { get; set; }
-            public double? longitude { get; set; }
+            public string? latitude { get; set; }
+            public string? longitude { get; set; }
         }
         public class AddOrderItemsRequest
         {
             public long product_id { get; set; }
             public int order_qty { get; set; }
+        }
+
+        public class CreateOrderRequest
+        {
+            public List<AddOrderItemsRequest> aoiReq { get; set; }
+            public AddOrderDetailRequest aodReq { get; set; }
         }
 
         public class AddOrderDetailRequest
@@ -129,8 +150,8 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Controllers
             public string? delivery_address { get; set; }
             public string? delivery_remark { get; set; }
             public string? location_name { get; set; }
-            public double delivery_latitude { get; set; }
-            public double delivery_longitude { get; set; }
+            public string delivery_latitude { get; set; }
+            public string delivery_longitude { get; set; }
             public int? cash_amount { get; set; }
         }
 
@@ -142,6 +163,18 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Controllers
         public class SuspendOrCancelOderRequest
         {
             public string remark { get; set; }
+        }
+
+        public class PushNotifMessage()
+        {
+            public string Token { get; set; }
+            public Notification Notification { get; set; }
+        }
+
+        public class Notification()
+        {
+            public string Title { get; set; }
+            public string Body { get; set; }
         }
     }
 }

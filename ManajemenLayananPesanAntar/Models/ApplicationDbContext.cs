@@ -42,5 +42,6 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Models
         public DbSet<OrderDelivery> Order_Deliveries { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<FcmToken> Fcm_Token { get; set; }
     }
 }

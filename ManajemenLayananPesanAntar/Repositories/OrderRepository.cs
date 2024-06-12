@@ -9,6 +9,10 @@ using System.Text.RegularExpressions;
 using static API_Manajemen_Layanan_Pesan_Antar.Controllers.OrderController;
 using System.Globalization;
 using Microsoft.IdentityModel.Tokens;
+using FirebaseAdmin;
+using Microsoft.Identity.Client.Platforms.Features.DesktopOs.Kerberos;
+using Google.Apis.Auth.OAuth2;
+using FirebaseAdmin.Messaging;
 
 namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
 {
@@ -16,6 +20,8 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly IMapper _mapper;
+        private static FirebaseApp _firebaseApp;
+
         public OrderRepository(ApplicationDbContext dbContext, IMapper mapper) 
         {
             _dbContext = dbContext;
@@ -38,6 +44,87 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
                 data = newOrderDto,
                 info = "Pesanan berhasil dibuat."
             };
+        }
+
+        public ResponseDataInfo<OrderDto> CreateOrderWithDetails(List<AddOrderItemsRequest> aoiReq, AddOrderDetailRequest aodReq)
+        {
+            var response = new ResponseDataInfo<OrderDto>();
+            response.data = null;
+            response.info = "";
+
+            var newOrder = new Order();
+            newOrder.order_status = 0;
+            newOrder.total_payment = 0;
+
+            newOrder.order_items = new List<OrderItem>();
+
+            if (aoiReq == null)
+            {
+                response.info = "Item pesanan tidak boleh kosong.";
+                return response;
+            }
+
+            foreach (var oi in aoiReq)
+            {
+                var product = _dbContext.Set<Product>().Where(x => x.id == oi.product_id).FirstOrDefault();
+
+                if (product == null)
+                {
+                    response.info = "Produk tidak ditemukan.";
+                    return response;
+                }
+
+                if (oi.order_qty > product.available_qty)
+                {
+                    response.info = $"Stok produk {product.product_name} telah habis. Silahkan pilih produk lain!";
+                    return response;
+                }
+
+                var newOrderItem = new OrderItem();
+                newOrderItem.order_qty = oi.order_qty;
+                newOrderItem.unit_price = product.unit_price;
+                newOrderItem.subtotal = oi.order_qty * product.unit_price;
+                newOrderItem.product = product;
+                newOrderItem.SetCreated();
+
+                newOrder.order_items.Add(newOrderItem);
+                newOrder.total_payment += newOrderItem.subtotal;
+            }
+
+            newOrder.cust_name = aodReq.cust_name;
+            newOrder.cust_phone_number = FormatPhoneNumber(aodReq.cust_phone);
+            newOrder.cash_amount = aodReq.cash_amount;
+            newOrder.SetUpdated();
+
+            newOrder.order_delivery = new OrderDelivery();
+            newOrder.order_delivery.SetCreated();
+            newOrder.order_delivery.delivery_address = aodReq.delivery_address;
+            newOrder.order_delivery.delivery_remark = aodReq.delivery_remark;
+            newOrder.order_delivery.delivery_latitude = aodReq.delivery_latitude;
+            newOrder.order_delivery.delivery_longitude = aodReq.delivery_longitude;
+
+            newOrder.SetCreated();
+            _dbContext.Add<Order>(newOrder);
+            _dbContext.SaveChanges();
+
+            var newOrderDto = ProcessOrder(newOrder.id).data;
+            if (newOrderDto != null)
+            {
+                newOrderDto.order_delivery.deliverylatlng = $"{newOrder.order_delivery.delivery_latitude},{newOrder.order_delivery.delivery_longitude}";
+                return new ResponseDataInfo<OrderDto>()
+                {
+                    data = newOrderDto,
+                    info = "Pesanan berhasil dibuat."
+                };
+            } else
+            {
+                return new ResponseDataInfo<OrderDto>()
+                {
+                    data = null,
+                    info = "Terjadi kesalahan dalam membuat pesanan"
+                };
+            }
+            
         }
 
         public ResponseDataInfo<OrderDto> AddOrderItems(List<AddOrderItemsRequest> req, long id)
@@ -124,11 +211,15 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             order.order_delivery = new OrderDelivery();
             order.order_delivery.SetCreated();
             order.order_delivery.delivery_address = req.delivery_address;
-
+            order.order_delivery.delivery_remark = req.delivery_remark;
+            order.order_delivery.delivery_latitude = req.delivery_latitude;
+            order.order_delivery.delivery_longitude = req.delivery_longitude;
+            
             _dbContext.Update<Order>(order);
             _dbContext.SaveChanges();
 
             var orderDto = _mapper.Map<OrderDto>(order);
+            orderDto.order_delivery.deliverylatlng = $"{order.order_delivery.delivery_latitude},{order.order_delivery.delivery_longitude}";
             response.data = orderDto;
             response.info = "Detail pesanan berhasil ditambahkan.";
             return response;
@@ -181,6 +272,8 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             response.data = orderDto;
             response.info = "Pesanan berhasil dibuat.";
 
+            SendPushNotification();
+
             return response;
         }
         
@@ -209,7 +302,7 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             var orderDto = _mapper.Map<OrderDto>(order);
             orderDto.send_whatsapp_url = GenerateSendWhatsAppUrl(orderDto);
             response.data = orderDto;
-            response.info = "Pesanan sedang dalam pengiriman.";
+            response.info = "Berhasil melakukan pengiriman pesanan.";
 
             return response;
         }
@@ -238,7 +331,7 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             var orderDto = _mapper.Map<OrderDto>(order);
             orderDto.send_whatsapp_url = GenerateSendWhatsAppUrl(orderDto);
             response.data = orderDto;
-            response.info = "Pesanan telah dikirim.";
+            response.info = "Pesanan telah selesai.";
 
             return response;
         }
@@ -382,7 +475,7 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             };
         }
 
-        public ResponseDataInfo<OrderDeliveryDto> UpdateCourierLocation(long orderDeliveryId, double? latitude, double? longitude)
+        public ResponseDataInfo<OrderDeliveryDto> UpdateCourierLocation(long orderDeliveryId, string latitude, string longitude)
         {
             var orderDelivery = _dbContext.Order_Deliveries.Where(x => x.id == orderDeliveryId).FirstOrDefault();
 
@@ -408,6 +501,21 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             };
         }
 
+        public ResponseDataInfo<string> AddFcmToken(string token)
+        {
+            var fcmToken = new FcmToken();
+            fcmToken.fcm_token = token;
+            fcmToken.SetCreated();
+            _dbContext.Add<FcmToken>(fcmToken);
+            _dbContext.SaveChanges();
+
+            return new ResponseDataInfo<string>()
+            {
+                data = token,
+                info = "Ok"
+            };
+        }
+
         private Order GetOrderDetail(long id)
         {
             var order = _dbContext.Set<Order>().Where(x => x.id == id)
@@ -415,11 +523,6 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
                 .ThenInclude(x => x.product)
                 .Include(x => x.order_delivery)
                 .FirstOrDefault();
-
-            if (order == null)
-            {
-                return null;
-            }
 
             return order;
         }
@@ -515,6 +618,36 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Repositories
             else
             {
                 return "malam";
+            }
+        }
+
+        private async void SendPushNotification()
+        {
+            if (_firebaseApp == null)
+            {
+                // Initialize FirebaseApp if not already initialized
+                _firebaseApp = FirebaseApp.Create(new AppOptions()
+                {
+                    Credential = GoogleCredential.FromFile("Credentials/pushnotification-d3c4c-firebase-adminsdk-84t7w-485b5db4eb.json")
+                });
+            }
+
+            var tokens = _dbContext.Set<FcmToken>().ToList();
+
+            foreach (var token in tokens)
+            {
+                var message = new Message()
+                {
+                    Token = token.fcm_token,
+                    Notification = new FirebaseAdmin.Messaging.Notification()
+                    {
+                        Title = "Pesanan baru!",
+                        Body = "Terdapat pesanan baru."
+                    }
+                };
+
+                string response = await FirebaseMessaging.DefaultInstance.SendAsync(message);
+                Console.WriteLine("Successfully sent message: " + response);
             }
         }
     }

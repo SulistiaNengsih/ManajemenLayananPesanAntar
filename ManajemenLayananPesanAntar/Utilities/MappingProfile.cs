@@ -37,6 +37,10 @@ namespace API_Manajemen_Layanan_Pesan_Antar.Utilities
             CreateMap<OrderDelivery, OrderDeliveryDto>()
                 .ForMember(dest => dest.deliverylatlng, opt => opt.MapFrom(src => $"{src.delivery_latitude},{src.delivery_longitude}"));
             CreateMap<OrderDeliveryDto, OrderDelivery>();
+
+            // Fcm Token
+            CreateMap<FcmToken, FcmTokenDto>();
+            CreateMap<FcmTokenDto, FcmToken>();
         }
     }
 }
